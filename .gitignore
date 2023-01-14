@@ -3,4 +3,4 @@
 # dependencies
 node_modules/
 front-bate-papo-uol/
-.env/
+/.env
