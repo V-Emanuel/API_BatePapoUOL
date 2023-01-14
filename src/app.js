@@ -39,7 +39,7 @@ app.post('/participants', async (req, res) => {
         if (nameExist) return res.status(409).send("esse usuário já existe")
         await db.collection('participants').insertOne({ name, lastStatus })
         await db.collection("messages").insertOne({
-            from: userName.name,
+            from: name,
             to: "Todos",
             text: "entra na sala...",
             type: "status",
@@ -62,11 +62,37 @@ app.get('/participants', async (res, res) => {
     }
 })
 
+app.post('/messages', async (req, res) => {
+    const { to, text, type} = req.body;
+    const messageSchema = joi.object({
+        to: joi.string().required(),
+        text: joi.string().required(),
+        type: joi.string().required()
+    });
+    const validation = messageSchema.validate({to, text, type}, { abortEarly: true });
+    if (validation.error) {
+        const errors = validation.error.details.map((detail) => detail.message);
+        return res.status(422).send(errors);
+    }
+    try {
+        await db.collection("messages").insertOne({
+            to,
+            text,
+            type,
+            time: dayjs().format('HH:mm:ss')
+        })
+        res.send('Ok')
+    } catch (err) {
+        console.log(err)
+        res.status(500).send("Deu algo errado no servidor")
+    }
+})
+
 app.get('/messages', async (req, res) => {
     const messages =  await db.collection("messages").find().toArray()
     try {
         return res.send(messages)
-    } catch {
+    } catch(err) {
         return res.sendStatus(500).send(err.message)
     }
 })
