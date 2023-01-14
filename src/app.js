@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
+import joi from 'joi';
+import dayjs from "dayjs";
 dotenv.config();
 
 const PORT = 5000;
@@ -13,27 +15,41 @@ app.listen(PORT);
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
 let db;
 
-mongoClient.connect()
-.then(() => {
-	db = mongoClient.db();
-})
-.catch((err)=>{
-    console.log(err)
-    console.log("Deu errado")
-})
+try {
+    await mongoClient.connect()
+    db = mongoClient.db()
+    console.log('Deu certo')
+} catch (err) {
+    console.log('Deu errado')
+}
 
 app.post('/participants', async (req, res) => {
-    const {name} = req.body;
-    const lastStatus = Date.now()
-    try{
-        const nameExist = await db.collection('participants').findOne({name})
+    const { name } = req.body;
+    const lastStatus = Date.now();
+    const userSchema = joi.object({
+        name: joi.string().required()
+    });
+    const validation = userSchema.validate(name, { abortEarly: true });
+    if (validation.error) {
+        const errors = validation.error.details.map((detail) => detail.message);
+        return res.status(422).send(errors);
+    }
+    try {
+        const nameExist = await db.collection('participants').findOne({ name })
         if (nameExist) return res.status(409).send("esse usuário já existe")
-        await db.collection('participants').insertOne({name, lastStatus})
+        await db.collection('participants').insertOne({ name, lastStatus })
+        await db.collection("messages").insertOne({
+            from: userName.name,
+            to: "Todos",
+            text: "entra na sala...",
+            type: "status",
+            time: dayjs().format('HH:mm:ss')
+        })
         res.send('Ok')
-    }catch(err){
+    } catch (err) {
         console.log(err)
         res.status(500).send("Deu algo errado no servidor")
-    } 
+    }
 })
 
 app.get('/participants', async (res, res) => {
@@ -41,7 +57,16 @@ app.get('/participants', async (res, res) => {
         const users = await db.collection("participants").find().toArray()
         if (!users) return res.status(404).send("Não há participantes")
         res.send(users)
-      } catch (error) {
+    } catch (error) {
         res.status(500).send("Deu um erro no servidor de banco de dados")
-      }
+    }
+})
+
+app.get('/messages', async (req, res) => {
+    const messages =  await db.collection("messages").find().toArray()
+    try {
+        return res.send(messages)
+    } catch {
+        return res.sendStatus(500).send(err.message)
+    }
 })
