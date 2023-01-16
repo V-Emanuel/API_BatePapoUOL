@@ -93,17 +93,29 @@ app.post('/messages', async (req, res) => {
 })
 
 app.get('/messages', async (req, res) => {
-    const limit = Number(req.query.limit)
+    const limit = req.query.limit
     const user= req.headers.user
-    const messages = await db.collection("messages").find(
-        {to: "Todos"}, {to: userName}, {from: userName}
-    ).toArray()
+    if(!limit){
+        limit = 0
+    }
     try {
-        if(limit && limit < 1)return res.sendStatus(422)
-        return res.send([...messages].slice(-limit).reverse())
-    } catch (err) {
-        return res.sendStatus(500).send(err.messages)
+        const completeMessages = await db.collection('messages').find().toArray();
+        const messages = completeMessages.filter((i) => i.to === user || i.to==='Todos' || i.from===user)
+        res.send(messages.slice(-limit));
+    } catch (error) {
+        console.error(error);
+        res.sendStatus(500);
     }
 })
 
+app.post('/status', async (req, res) => {  
+    const user = req.headers.user
+    try {
+        const userExist = await db.collection("participants").findOne({ name: user })
+        if (!userExist) return res.sendStatus(404)
+        await db.collection("participants").updateOne({name: user}, {$set: {lastStatus: Date.now()}})
+        return res.sendStatus(200)
+    } catch {
+    }
+})
 app.listen(PORT);
