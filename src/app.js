@@ -71,14 +71,14 @@ app.post('/messages', async (req, res) => {
     const messageSchema = joi.object({
         to: joi.string().required(),
         text: joi.string().required(),
-        type: joi.string().required()
+        type: joi.string().valid("private_message", "message").required()
     });
     const validation = messageSchema.validate(messages, { abortEarly: true });
     if (validation.error) {
         const errors = validation.error.details.map((detail) => detail.message);
         return res.status(422).send(errors);
     }
-    const userExists = await db.collection("participants").findOne({ name: userName })
+    const userExists = await db.collection("participants").findOne({ name: user })
     if (!userExists) return res.sendStatus(422)
     try {
         await db.collection("messages").insertOne({
@@ -86,7 +86,6 @@ app.post('/messages', async (req, res) => {
             ...messages,
             time: dayjs().format('HH:mm:ss')
         })
-        res.send('Ok')
         return res.sendStatus(201)
     } catch (err) {
         return res.sendStatus(500).send(err.message)
@@ -94,14 +93,16 @@ app.post('/messages', async (req, res) => {
 })
 
 app.get('/messages', async (req, res) => {
-    const limitMessages = req.query.limit
-    const user = req.headers.user
-    const limitLength = parseInt(limit)
-    const messages = await db.collection("messages").find().toArray()
+    const limit = Number(req.query.limit)
+    const user= req.headers.user
+    const messages = await db.collection("messages").find(
+        {to: "Todos"}, {to: userName}, {from: userName}
+    ).toArray()
     try {
-        return res.send(messages)
+        if(limit && limit < 1)return res.sendStatus(422)
+        return res.send([...messages].slice(-limit).reverse())
     } catch (err) {
-        return res.sendStatus(500).send(err.message)
+        return res.sendStatus(500).send(err.messages)
     }
 })
 
