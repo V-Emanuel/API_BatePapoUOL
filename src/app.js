@@ -93,18 +93,17 @@ app.post('/messages', async (req, res) => {
 })
 
 app.get('/messages', async (req, res) => {
-    const limit = req.query.limit
+    const limit = Number(req.query.limit)
     const user= req.headers.user
     if(!limit){
         limit = 0
     }
     try {
-        const completeMessages = await db.collection('messages').find().toArray();
-        const messages = completeMessages.filter((i) => i.to === user || i.to==='Todos' || i.from===user)
-        res.send(messages.slice(-limit));
-    } catch (error) {
-        console.error(error);
-        res.sendStatus(500);
+        const messages = await db.collection("messages").find({$or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray()
+        res.send(messages.slice(-limit).reverse());
+    } catch (err) {
+        console.error(err);
+        res.sendStatus(500).send(err.message);
     }
 })
 
@@ -118,4 +117,27 @@ app.post('/status', async (req, res) => {
     } catch {
     }
 })
+
+async function RemoveUsers(){
+    const users = await db.collection("participants").find().toArray()
+    try {
+        users.forEach(async item => {
+            const idleTime = Date.now() - item.lastStatus
+            if (idleTime > 10000 ) {
+                await db.collection("participants").deleteOne({_id: ObjectId(item._id)})
+                await db.collection("messages").insertOne({
+                    from: item.name,
+                    to: "Todos",
+                    text: "sai da sala...",
+                    type: "status",
+                    time: dayjs().format('HH:mm:ss')
+                })
+            }
+        });
+    } catch (err) {
+        res.sendStatus(500).send(err.message);
+    }
+}
+
+setInterval(RemoveUsers, 15000)
 app.listen(PORT);
