@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import joi from 'joi';
 import dayjs from "dayjs";
@@ -118,7 +118,7 @@ app.post('/status', async (req, res) => {
     }
 })
 
-async function RemoveUsers(){
+async function removeUsers(){
     const users = await db.collection("participants").find().toArray()
     try {
         for(let i = 0; i < users.length; i++){
@@ -139,5 +139,5 @@ async function RemoveUsers(){
     }
 }
 
-setInterval(RemoveUsers, 15000)
+setInterval(removeUsers, 15000)
 app.listen(PORT);
