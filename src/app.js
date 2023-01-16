@@ -38,7 +38,7 @@ app.post('/participants', async (req, res) => {
     try {
         const nameExist = await db.collection('participants').findOne({ name: user.name })
         if (nameExist) return res.status(409).send("esse usuário já existe")
-        await db.collection('participants').insertOne({ 
+        await db.collection('participants').insertOne({
             name: user.name,
             lastStatus: Date.now()
         })
@@ -57,7 +57,7 @@ app.post('/participants', async (req, res) => {
 
 app.get('/participants', async (req, res) => {
     const users = await db.collection("participants").find().toArray()
-    try {      
+    try {
         if (!users) return res.status(404).send("Não há participantes")
         res.send(users)
     } catch (error) {
@@ -78,24 +78,29 @@ app.post('/messages', async (req, res) => {
         const errors = validation.error.details.map((detail) => detail.message);
         return res.status(422).send(errors);
     }
+    const userExists = await db.collection("participants").findOne({ name: userName })
+    if (!userExists) return res.sendStatus(422)
     try {
         await db.collection("messages").insertOne({
-            from: user, 
+            from: user,
             ...messages,
             time: dayjs().format('HH:mm:ss')
         })
         res.send('Ok')
+        return res.sendStatus(201)
     } catch (err) {
-        console.log(err)
         return res.sendStatus(500).send(err.message)
     }
 })
 
 app.get('/messages', async (req, res) => {
-    const messages =  await db.collection("messages").find().toArray()
+    const limitMessages = req.query.limit
+    const user = req.headers.user
+    const limitLength = parseInt(limit)
+    const messages = await db.collection("messages").find().toArray()
     try {
         return res.send(messages)
-    } catch(err) {
+    } catch (err) {
         return res.sendStatus(500).send(err.message)
     }
 })
