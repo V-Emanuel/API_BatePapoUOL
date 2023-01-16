@@ -121,19 +121,19 @@ app.post('/status', async (req, res) => {
 async function RemoveUsers(){
     const users = await db.collection("participants").find().toArray()
     try {
-        users.forEach(async item => {
-            const idleTime = Date.now() - item.lastStatus
+        for(let i = 0; i < users.length; i++){
+            let idleTime = Date.now() - users[i].lastStatus
             if (idleTime > 10000 ) {
-                await db.collection("participants").deleteOne({_id: ObjectId(item._id)})
+                await db.collection("participants").deleteOne({_id: ObjectId(users[i]._id)})
                 await db.collection("messages").insertOne({
-                    from: item.name,
+                    from: users[i].name,
                     to: "Todos",
                     text: "sai da sala...",
                     type: "status",
                     time: dayjs().format('HH:mm:ss')
                 })
             }
-        });
+        }
     } catch (err) {
         res.sendStatus(500).send(err.message);
     }
