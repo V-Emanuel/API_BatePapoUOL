@@ -93,17 +93,18 @@ app.post('/messages', async (req, res) => {
 })
 
 app.get('/messages', async (req, res) => {
-    const limit = Number(req.query.limit)
-    const user= req.headers.user
-    if(!limit){
-        limit = 0
-    }
+    const limit = req.query.limit
+    const limitLength = parseInt(limit)
+    const user = req.headers.user
     try {
         const messages = await db.collection("messages").find({$or: [{to: "Todos"}, {to: user}, {from: user}]}).toArray()
-        res.send(messages.slice(-limit).reverse());
-    } catch (err) {
-        console.error(err);
-        res.sendStatus(500).send(err.message);
+        if (limit ) {
+            if (limitLength < 1 || isNaN(limit)) return res.sendStatus(422)
+            return res.send([...messages].slice(-limit).reverse())
+        }
+        return res.send([...messages].reverse())
+    } catch(err) {
+        return res.sendStatus(500).send(err.message)
     }
 })
 
