@@ -24,38 +24,41 @@ try {
     console.log('Deu errado')
 }
 
+
 app.post('/participants', async (req, res) => {
-    const { name } = req.body;
+    const user = req.body;
     const lastStatus = Date.now();
     const userSchema = joi.object({
         name: joi.string().required()
     });
-    const validation = userSchema.validate(name, { abortEarly: true });
+    const validation = userSchema.validate(user, { abortEarly: true });
     if (validation.error) {
         const errors = validation.error.details.map((detail) => detail.message);
         return res.status(422).send(errors);
     }
     try {
-        const nameExist = await db.collection('participants').findOne({ name })
+        const nameExist = await db.collection('participants').findOne({ name: user.name })
         if (nameExist) return res.status(409).send("esse usuário já existe")
-        await db.collection('participants').insertOne({ name, lastStatus })
+        await db.collection('participants').insertOne({ 
+            name: user.name,
+            lastStatus: Date.now()
+        })
         await db.collection("messages").insertOne({
-            from: name,
+            from: user.name,
             to: "Todos",
             text: "entra na sala...",
             type: "status",
             time: dayjs().format('HH:mm:ss')
         })
-        res.send('Ok')
+        return res.sendStatus(201)
     } catch (err) {
-        console.log(err)
-        res.status(500).send("Deu algo errado no servidor")
+        res.status(500).send(err.message)
     }
 })
 
 app.get('/participants', async (req, res) => {
-    try {
-        const users = await db.collection("participants").find().toArray()
+    const users = await db.collection("participants").find().toArray()
+    try {      
         if (!users) return res.status(404).send("Não há participantes")
         res.send(users)
     } catch (error) {
